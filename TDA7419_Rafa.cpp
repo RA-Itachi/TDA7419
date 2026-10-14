@@ -3,6 +3,7 @@
  *   TDA7419_Rafa - Implementacion
  * ============================================================================
  *   Ver TDA7419_Rafa.h para documentacion completa.
+ *   Version 1.1.0 - correcciones de dBToStep y setAtt*
  * ============================================================================
  */
 
@@ -81,11 +82,33 @@ bool TDA7419_Rafa::isPresent()
 // ============================================================================
 //   METODOS AUXILIARES
 // ============================================================================
+
+// ============================================================================
+//   CONVERSION dB -> paso segun Tabla 11 del datasheet
+// ============================================================================
+//
+//   Rango aceptado: -79 a +15 dB
+//
+//   Tramo positivo (0 a +15 dB):
+//     paso = dB           (0..15)
+//
+//   Tramo negativo (-1 a -79 dB):
+//     paso = 16 + |dB|    (17..95)
+//
+//   El paso se envia al chip en el campo D6..D0.
+//   El bit D7 (soft step) se añade en las funciones setVolume/setAtt.
+//
+//   Ejemplos:
+//     dB = +15 -> paso 15  (0b0001111)
+//     dB =   0 -> paso  0  (0b0000000)
+//     dB =  -1 -> paso 17  (0b0010001)
+//     dB = -79 -> paso 95  (0b1011111)
+//
 uint8_t TDA7419_Rafa::dBToStep(int8_t dB)
 {
-    if (dB <= -79) return 0;
-    if (dB >= +15) return 94;
-    return (uint8_t)(79 + dB);
+    if (dB >= 0)   return (uint8_t)dB;              // 0..+15
+    if (dB <= -79) return 95;                       // -79
+    return (uint8_t)(16 + (-dB));                   // -1..-78
 }
 
 uint8_t TDA7419_Rafa::gainToBits(int8_t gain)
@@ -130,6 +153,16 @@ void TDA7419_Rafa::setLoudness(uint8_t attDb, uint8_t centerFreq,
 // ============================================================================
 //   SOFT MUTE / CLOCK GENERATOR
 // ============================================================================
+/*
+ * OJO con la nomenclatura de los parametros (bit D0 y D1 del datasheet):
+ *   softMute:     true  -> D0 = 1 -> audio pasa (mute OFF)
+ *                 false -> D0 = 0 -> mute ON
+ *   pinInfluence: true  -> D1 = 1 -> IIC only (ignora pin 21)
+ *                 false -> D1 = 0 -> Pin and IIC
+ *
+ * Para tener audio SIEMPRE hay que llamar con:
+ *   audio.setSoftMute(true, true, ...)
+ */
 void TDA7419_Rafa::setSoftMute(bool softMute, bool pinInfluence,
                                 uint8_t muteTime, uint8_t stepTime,
                                 bool clockFast)
@@ -151,9 +184,8 @@ void TDA7419_Rafa::setSoftMute(bool softMute, bool pinInfluence,
 // ============================================================================
 void TDA7419_Rafa::setVolumeDb(int8_t dB, bool soft)
 {
-    _volDb = dB;
     uint8_t step = dBToStep(dB);
-    setVolumeStep(step, soft);
+    writeWire(TDA7419_SUB_VOLUME, (step & 0x7F) | (soft ? 0x80 : 0x00));
 }
 
 void TDA7419_Rafa::setVolumeStep(uint8_t step, bool soft)
@@ -356,11 +388,6 @@ void TDA7419_Rafa::resetSpectrum()
     digitalWrite(_saClkPin, LOW);
 }
 
-/*
- * Lectura SIN reset previo.
- * Lee el pico acumulado en los condensadores desde el ultimo reset.
- * Util para mediciones puntuales.
- */
 bool TDA7419_Rafa::readSpectrum(uint16_t *values)
 {
     if (!_saAttached || !values) return false;
@@ -384,13 +411,6 @@ bool TDA7419_Rafa::readSpectrum(uint16_t *values)
     return true;
 }
 
-/*
- * Lectura CON reset previo.
- * Resetea los condensadores y luego lee el pico desde el reset.
- * Este es el metodo RECOMENDADO para visualizadores de espectro,
- * porque limpia los condensadores en cada ciclo y refleja el peak
- * de la ventana de tiempo mas reciente.
- */
 bool TDA7419_Rafa::readSpectrumWithReset(uint16_t *values, uint16_t resetMs)
 {
     if (!_saAttached || !values) return false;
@@ -399,13 +419,11 @@ bool TDA7419_Rafa::readSpectrumWithReset(uint16_t *values, uint16_t resetMs)
         return false;
     }
 
-    // 1) Reset: SAclk alto durante > 4.5 ms
     digitalWrite(_saClkPin, HIGH);
     delay(resetMs);
     digitalWrite(_saClkPin, LOW);
     delayMicroseconds(10);
 
-    // 2) Leer las 7 bandas
     for (uint8_t i = 0; i < TDA_SA_BANDS; i++) {
         digitalWrite(_saClkPin, HIGH);
         delayMicroseconds(TDA_SA_SETTLE_US);

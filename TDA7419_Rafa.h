@@ -5,23 +5,20 @@
  *
  *   Descripcion:
  *     Control completo del TDA7419 via I2C: selector de entrada, ganancia,
- *     loudness, soft mute, volumen con escala en dB, filtros de 3 bandas
- *     (bass/middle/treble), subwoofer, mixing, atenuadores de altavoces y
- *     spectrum analyzer de 7 bandas.
+ *     loudness, soft mute, volumen, filtros de 3 bandas (bass/middle/treble),
+ *     subwoofer, mixing, atenuadores de altavoces y spectrum analyzer.
  *
- *   Caracteristicas:
- *     - Volumen con escala real en dB (de -79 dB a +15 dB)
- *     - Soft step y soft mute configurables
- *     - Filtros de 3 bandas con Q y frecuencia programables
- *     - Spectrum analyzer integrado (7 bandas)
- *     - API modular y documentada
+ *   Correcciones aplicadas (v1.1.0):
+ *     - dBToStep() corregida segun Tabla 11 del datasheet
+ *     - setVolumeDb() usa la formula correcta: paso = 79 + dB
+ *     - setAtt*() usan el mapeo correcto para los atenuadores
+ *     - Añadida writeRaw() para diagnostico y control directo
  *
  *   Basada en:
  *     Libreria original de Alexander Liman (liman324@yandex.ru)
- *     https://rcl-radio.ru/?p=57658
  *
  *   Licencia: MIT
- *   Version:  1.0.0
+ *   Version:  1.1.0
  * ============================================================================
  */
 
@@ -95,12 +92,18 @@ public:
     // ------------------------------------------------------------------------
     //   SOFT MUTE / CLOCK GENERATOR (subaddress 0x42)
     // ------------------------------------------------------------------------
+    // OJO: softMute: true=D0=1=audio pasa, false=D0=0=mute ON
+    //      pinInfluence: true=D1=1=IIC only, false=D1=0=Pin and IIC
     void setSoftMute(bool softMute, bool pinInfluence, uint8_t muteTime,
                      uint8_t stepTime, bool clockFast);
 
     // ------------------------------------------------------------------------
     //   VOLUMEN (subaddress 0x43)
     // ------------------------------------------------------------------------
+    // Rango: -79 dB (mute) a +15 dB (maximo con ganancia)
+    //   0 dB -> paso 79
+    //   +15 dB -> paso 94
+    //   -79 dB -> paso 0
     void setVolumeDb(int8_t dB, bool soft);
     void setVolumeStep(uint8_t step, bool soft);
     int8_t getVolumeDb() const { return _volDb; }
@@ -108,6 +111,10 @@ public:
     // ------------------------------------------------------------------------
     //   ATENUADORES DE ALTAVOCES (subaddresses 0x4A - 0x4F)
     // ------------------------------------------------------------------------
+    // Rango: -79 dB (mute) a +15 dB (maximo)
+    //   0 dB -> paso 79
+    //   +15 dB -> paso 94 (recomendado para maximo sin atenuacion)
+    //   -79 dB -> paso 0
     void setAttLF(int8_t dB, bool soft);
     void setAttRF(int8_t dB, bool soft);
     void setAttLT(int8_t dB, bool soft);
@@ -150,39 +157,18 @@ public:
     // ------------------------------------------------------------------------
     //   SPECTRUM ANALYZER - LECTURA
     // ------------------------------------------------------------------------
-    /**
-     * @brief Configura los pines GPIO para el spectrum analyzer.
-     *        Debe llamarse antes de readSpectrum().
-     * @param clkPin Pin conectado a SAclk (salida)
-     * @param outPin Pin conectado a SAout (entrada ADC)
-     */
     void attachSpectrumPins(uint8_t clkPin, uint8_t outPin);
-
-    /**
-     * @brief Realiza una lectura completa de las 7 bandas SIN reset previo.
-     *        Util para mediciones continuas donde queremos el "peak acumulado".
-     */
     bool readSpectrum(uint16_t *values);
-
-    /**
-     * @brief Realiza una lectura con reset previo de los condensadores.
-     *        Util para medir el "peak desde el ultimo ciclo".
-     *        Este es el metodo recomendado para visualizadores de espectro.
-     * @param values  Buffer de 7 uint16_t donde se guardan los valores ADC
-     * @param resetMs Tiempo de reset en ms (por defecto 5 ms)
-     * @return true si la lectura fue exitosa
-     */
     bool readSpectrumWithReset(uint16_t *values, uint16_t resetMs = TDA_SA_RESET_MS);
-
-    /**
-     * @brief Resetea los condensadores del spectrum analyzer.
-     */
     void resetSpectrum();
 
     // ------------------------------------------------------------------------
     //   BAJO NIVEL
     // ------------------------------------------------------------------------
     void writeWire(uint8_t subAddr, uint8_t data);
+
+    // Alias explicito para escribir un byte crudo (diagnostico)
+    void writeRaw(uint8_t subAddr, uint8_t data) { writeWire(subAddr, data); }
 
 private:
     int8_t   _volDb;
