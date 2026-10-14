@@ -1,0 +1,68 @@
+#######################################
+# Syntax Coloring Map For TDA7419_Rafa
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+TDA7419_Rafa	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+begin	KEYWORD2
+isPresent	KEYWORD2
+setInput	KEYWORD2
+setInput2	KEYWORD2
+setLoudness	KEYWORD2
+setSoftMute	KEYWORD2
+setVolumeDb	KEYWORD2
+setVolumeStep	KEYWORD2
+getVolumeDb	KEYWORD2
+setAttLF	KEYWORD2
+setAttRF	KEYWORD2
+setAttLT	KEYWORD2
+setAttRT	KEYWORD2
+setAttSub	KEYWORD2
+setAttMix	KEYWORD2
+setFilterTreble	KEYWORD2
+setFilterMiddle	KEYWORD2
+setFilterBass	KEYWORD2
+setSubMB	KEYWORD2
+setMixGainEff	KEYWORD2
+setSpectrumEnabled	KEYWORD2
+setSpectrumQ	KEYWORD2
+setSpectrumSource	KEYWORD2
+setCouplingMode	KEYWORD2
+attachSpectrumPins	KEYWORD2
+readSpectrum	KEYWORD2
+readSpectrumWithReset	KEYWORD2
+resetSpectrum	KEYWORD2
+writeWire	KEYWORD2
+writeRaw	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+TDA7419_ADDR	LITERAL1
+TDA7419_SUB_INPUT	LITERAL1
+TDA7419_SUB_LOUDNESS	LITERAL1
+TDA7419_SUB_SOFT	LITERAL1
+TDA7419_SUB_VOLUME	LITERAL1
+TDA7419_SUB_TREBLE	LITERAL1
+TDA7419_SUB_MIDDLE	LITERAL1
+TDA7419_SUB_BASS	LITERAL1
+TDA7419_SUB_INPUT2	LITERAL1
+TDA7419_SUB_SUB_M_B	LITERAL1
+TDA7419_SUB_MIX_G_EFF	LITERAL1
+TDA7419_SUB_ATT_LF	LITERAL1
+TDA7419_SUB_ATT_RF	LITERAL1
+TDA7419_SUB_ATT_LT	LITERAL1
+TDA7419_SUB_ATT_RT	LITERAL1
+TDA7419_SUB_MIX_LEV	LITERAL1
+TDA7419_SUB_ATT_SUB	LITERAL1
+TDA7419_SUB_SPECTRUM	LITERAL1
+TDA7419_SUB_TEST	LITERAL1
+TDA_SA_BANDS	LITERAL1
+TDA_SA_RESET_MS	LITERAL1
+TDA_SA_SETTLE_US	LITERAL1
